@@ -459,3 +459,659 @@ $(function() {
  * the loop is complete. You can create an element and add elements to it before
  * you add it that element to the DOM. That's the best way to do it.
  * */
+
+//##############################################################################
+// An introduction to Events
+
+/*
+ * Previously there were a huge number of methods, all focused on event binding.
+ * There were individual handlers like click(), hover(), and so on. Then there
+ * were more methods for general event binding, such as bind(), live() and
+ * delegate(). this got complicated and required a lot of explaining. Those
+ * methods all still exist in jQuery now, but it's highly advised that you
+ * switch to just using on().
+ * */
+
+/*
+ * hover() isn't actually an event, but it's shorthand for binding two functions
+ * at once---one to the mouseenter event, which is executed when the mouse
+ * hovers over the element in question, and one for the mouseleave event, which
+ * is when the mouse stops hovering over the element.
+ * */
+$("div").hover(function() {
+    alert("hovered in");
+}, function() {
+    alert("hovered out");
+});
+
+/*
+ * If you would rather use the new on() method, you have to use the mouseenter
+ * and mouseleave events:
+ * */
+$("div").on("mouseenter", function() {
+    alert("hovered over");
+}).on("mouseleave", function() {
+    alert("hovered out");
+});
+
+/*
+ * on() allows you to bind the same function to multiple events. Simply pass
+ * them into the on() method as a space-demilited string:
+ * */
+$("div").on("mouseenter mouseleave", function() {
+    alert("hovered on or out");
+});
+
+$("div").on("mouseenter mouseleave click dblclick", function() {
+    alert("hovered on or out, clicked or double clicked");
+});
+
+/*
+ * The main mouse events you need to be aware of are:
+ * click
+ * mouseenter
+ * mouseleave
+ * dblclick
+ * */
+/*
+ * Another important part of jQuery'e events are the form events.
+ * jQuery makes enhancing forms using JavaScript --- such as custom validation
+ * --- really straightforward.
+ * */
+/*
+<form action="/some/url" method="post">
+    <label>Enter your first name: </label>
+    <input type="text" name="first_name" >
+    <input type="submit" name="submit" value="submit" >
+</form>
+*/
+$("form").on("submit", function() {
+    alert("you just submitted the form!");
+});
+
+/*
+ * For dealing with events on individual inputs, the two events you will use
+ * most often are focus and blur, which are exact opposites of each other.
+ * The focus event is fired when an element has focus. The most obvious example 
+ * is when the user clicks an input box or starts typing in it. At that moment,
+ * the element has focus and the focus event is fired. When the user moves on,
+ * clicking another element or just off the element, the blur method fired.
+ * Think of focus and blur as being a little like mouseenter and mouseleave in
+ * how they work. The most important difference is that focus and blur can be
+ * triggered in more ways than just via a mouse. The can also be triggered via
+ * the keyboard when the user tabs through a form. Thus, for events to be fired
+ * based on an input element being active, never use mouseenter or mouseleave.
+ * Always use focus and blur.
+ * */
+
+$("input").on("focus", function() {
+    alert("you're focused on an input");
+}).on("blur", function() {
+    alert("this input just lost focus");
+});
+
+
+/*
+ * Sometimes you might want to manually trigger an event. Perhaps you've got a
+ * link that enables the user to fill out a form, and when it's clicked you'd
+ * like to fire the submit event on a form. jQuery has the trigger() method to
+ * do this for us:
+ * */
+$("a").on("click", function() {
+    $("form").trigger("submit");
+});
+
+/*
+ * Just as you have on() for binding to events, you have off() for unbinding
+ * from events.
+ * */
+$("div").off();
+/*
+ * That will unbind all events from every div. You can also pass in an event as
+ * the first parameter to unbind all events of that type.
+ * */
+// It's also possible to unbind just a specific function.
+$(function() {
+    var clickEvent = function() {
+        alert("clickEvent");
+    };
+    $("p").on("click", function() {
+        alert("click");
+    }).on("click", clickEvent);
+
+    $("p").off("click", clickEvent);
+});
+
+// The Event Object
+
+/*
+ * Whenever you bind an event to a function and that function is then triggered,
+ * jQuery passes what’s known as the event object. This object contains a lot of 
+ * information about the event. To get access to this, just make your event
+ * handler take one parameter as an argument. jQuery then passes the event
+ * object into this function, and you can get at it through the argument that
+ * you denoted your function should take.
+ * */
+$(function() {
+    $("p").on("click", function(event) {
+        console.log(event);
+    });
+});
+
+$(function() {
+    $("div").on("hover", function(event) {
+        if(event.type === 'mouseenter') {
+            $(this).css("background", "blue");
+        }else{
+            $(this).css("background", "red");
+        }
+    });
+});
+
+/*
+ * You can use the pageX and pageY properties to get the position of the mouse
+ * when the event fired, relative to the top-left edge of the document window.
+ * */
+$(function() {
+    $("div").on("click", function(event) {
+        alert("Your mouse is at X " + event.pageX + " and at Y " + event.pageY);
+    });
+});
+
+// Building an Accordion
+$(function() {
+    var headings = $("h2");
+    var paragraphs = $("p");
+    paragraphs.not(":first").hide();
+
+    headings.on("click", function() {
+        var t = $(this);
+        if(t.next().is(":visible")) {
+            return;
+        }
+        paragraphs.hide();
+        t.next().show();
+    });
+});
+
+// vs.
+$(function() {
+    var headings = $("h2");
+    var paragraphs = $("p");
+    paragraphs.not(":first").hide();
+    headings.on("click", function() {
+        var t = $(this);
+        var tPara = t.next();
+        if(tPara.is(":visible")) {
+            return;
+        }
+        paragraphs.slideUp("normal");
+        tPara.slideDown("normal");
+    });
+});
+
+//##############################################################################
+
+//// More Events
+
+// Event Delegation
+
+/*
+ * Two problems:
+ * 1. How can you run a function whenever a paragraph is clicked, but still bind
+ * it efficiently when there are a lot of paragraphs?
+ * 2. How can you make it so any new paragraph inserted into the DOM also run
+ * the code when they are clicked?
+ * */
+/*
+ * 'event delegation' means that instead of binding the event to each paragraph
+ * individually, you bind the event to a parent element of all the paragraphs
+ * and let it delegate the event to the paragraph.
+ * */
+/*
+ * An explanation of how it works:
+ * 1. The click event is bound to a parent element of all you paragraphs (keep it
+ * simple and use the body element for this example).
+ * 2. When the body element detects an event of the type you bound (click, in this
+ * case), it checks to see if the click happened on a paragraph.
+ * 3. If it was, it fires the function you bound to it. This is where the
+ * delegation happens.
+ * */
+
+$(function() {
+    $("p").on("click", function() {
+        alert("Hello world");
+    });
+    $("<p />", {
+        text: "Paragraph 6"
+    }).appendTo("body");
+});
+
+// vs.
+$(function() {
+    $("body").on("click", "p", function() {
+        alert("Hello world");
+    });
+    $("<p />", {
+        text: "Paragraph 6"
+    }).appendTo("body");
+});
+
+/*
+ * If you're binding an event to just one element, there's no point in
+ * delegating because you don't gain anything. 
+ * */
+
+
+// Event Propagation
+
+/*
+ * Event propagation is the same as event bubbling; they are simply two terms
+ * meaning the same thing.
+ * */
+/*
+ * When an event is fired on a element in the browser, it's not just fired on
+ * that element, but every element that is a parent of it.
+ * */
+/*
+ * While most events (including the ones you'll work with most often) propagate,
+ * not all of them do.
+ * */
+// http://en.wikipedia.org/wiki/DOM_events
+
+/*
+ * Typically, the only time you need to worry about event propagation is when 
+ * you are binding an event to both an element and the element's parent.
+ * */
+/*
+ * Luckily, there is a way to stop event propagation. The event object has a
+ * method named 'stopPropagation' that can prevents the event from bubbling up
+ * the DOM tree, preventing any parent handlers from being notified of the
+ * event.
+ * */
+$(function() {
+    $("h5").on("click", function(event) {
+        alert("header");
+        event.stopPropagation();
+    });
+    $("div").on("click", function() {
+        alert("div");
+    });
+});
+
+/*
+ * Unless the propagation of an event is causing an issue, don't prevent it.
+ * */
+
+// Preventing Default Behavior
+/*
+ * Sometimes when you bind to an event, you need to stop the browser from
+ * performing the default action attached to that event.
+ * */
+$(function() {
+    $("a").on("click", function(event) {
+        event.preventDefault();
+        $("div").css("background", "blue");
+    });
+});
+
+//######
+$(function() {
+    $("a").on("click", function() {
+        $("div").css("background", "blue");
+        return false;
+    });
+});
+
+/*
+ * Making a handler return Boolean false has the effect of stopping the default
+ * event action from being called and stopping the event from propagating. In
+ * essence, it effectively is a shortcut for calling stopPropagation and
+ * preventDefault.
+ * As I explained, most of time you actually don't want to call stopPropagation,
+ * so I strongly advise avoiding return false;, and instead use preventDefault.
+ * */
+
+// You Own Events
+/*
+ * A seldom-used but very useful feature of jQuery’s events is the ability to 
+ * trigger and bind to your own custom events.
+ */
+$(function() {
+    $("h5").on("click", function() {
+        $("div").trigger("bgchange");
+    });
+    
+    $("div").on("bgchange", function() {
+        var t = $(this);
+        t.css("background-color", "blue");
+    });
+});
+
+/*
+ * The beauty of custom events is that they give you a neat way to package up
+ * your code and keep as much of it separate as possible. It also allows you to 
+ * assign meaningful names to the events you create, keeping your code easy to 
+ * follow and maintain.
+ */
+
+
+$(function() {
+    var accordion = $("#accordion");
+    var headings = $("h2");
+    var paragraphs = $("p");
+    paragraphs.not(":first").hide();
+    accordion.on("click", "h2", function() {
+        var t = $(this);
+        var tPara = t.next();
+        if(!tPara.is(":visible")) {
+            tPara.trigger("showParagraph");
+        }
+    });
+
+    accordion.on("showParagraph", "p", function() {
+        paragraphs.slideUp("normal");
+        $(this).slideDown("normal");
+    });
+});
+
+//##############################################################################
+
+// Animation
+/*
+* The animate() method can be used to animate a number of properties on an
+* element over a period of time.
+* */
+
+animate({
+    property: value,
+    property2: value2
+}, 500, function() {
+    console.log("finished");
+});
+/*
+ * Within the callback function, the value of this will refer to the DOM element 
+ * that has just been animated. If you wanted to use jQuery methods on that
+* object, you'd simply pass it through to jQuery, as follows: $(this)
+* */
+
+
+/*
+ * fadeIn()
+ * fadeOut()
+ * fadeToggle()
+ * fadeTo()
+ * */
+
+/*
+ * slideUp()
+ * slideDown()
+ * slideToggle()
+ * */
+/*
+ * If you ever find yourself checking whether an element is visible or not
+ * before sliding/fading it in, use the toggle methods to save yourself some
+ * work.
+ * */
+
+/*
+ * show()
+ * hide()
+ * toggle()
+ * */
+
+// The Animation Queue
+/*
+ * When you run multiple animations on a single element, they are not all run at
+ * the same time but are added to jQuery's animation queue.
+ * */
+/*
+ * jQuery performs animation through a series of setTimeout() calls.
+ * setTimeout() is a JavaScript method that runs code after a defined time
+ * interval. When you run code to animate a div's opacity from 1 to 0, it
+ * actually makes a large number of very small changes to the opacity over time
+ * to emulate an animation. There's no actual fading occuring. It's just very
+ * quickly changing the opacity by a small amount to give the illusion of
+ * animation.
+ * */
+
+// The lag effect problem
+
+$(function() {
+    $("h5").on("click", function() {
+        $("div").fadeToggle(500);
+    });
+});
+
+// VS.
+
+$(function() {
+    $("h5").on("click", function() {
+        $("div").stop().fadeToggle(500);
+    });
+});
+
+// VS.
+
+$(function() {
+    $("h5").on("click", function() {
+        $("div").stop(true, true).fadeToggle(500);
+    });
+});
+
+
+// Making things as easy as possible is really important in my opinion.
+
+//##############################################################################
+
+// The Image Slider
+
+/*
+#slider {
+    width: 300px;
+    overflow: hidden;
+    height: 400px;
+}
+
+#slider ul {
+    list-style: none;
+    width: 1500px;
+    height: 300px;
+    margin: 0;
+    padding: 0;
+}
+
+#slider li {
+    float: left;
+    width: 300px;
+    height: 300px;
+}
+*/
+
+$(function() {
+    var sliderWrapper = $("#slider");
+    var sliderList = sliderWrapper.children("ul");
+    var sliderItems = sliderList.children("li");
+    var buttons = sliderWrapper.children(".button");
+
+    var animateSlider = function(direction, duration) {
+        sliderList.animate({
+            "margin-left": direction + "=300px"    
+        }, duration);
+    };
+
+    var isAtStart = function() {
+        return parseInt(sliderList.css("margin-left"), 10) === 0;
+    }
+
+    var isAtEnd = function() {
+        var imageWidth = sliderItems.first().width();
+        var imageCount = sliderItems.length;
+        var maxMargin = -1 * (imageWidth * (imageCount-1));
+        return parseInt(sliderList.css("margin-left"), 10) === maxMargin;
+    }
+
+    /*
+    buttons.on("click", function() {
+        if($(this).hasClass("back")){
+            animateSlider("+", 1000);
+        } else {
+            animateSlider("-", 1000);
+        }
+    });
+    */
+   buttons.on("click", function() {
+       var $this = $(this);
+       var isBackBtn = $this.hasClass("back");
+
+       if(isBackBtn && isAtStart()) {
+           return;
+       }
+       if(!isBackBtn && isAtEnd()) {
+           return;
+       }
+       // if((isBackBtn && isAtStart()) || (!isBackBtn && isAtEnd())) { return; }
+       animateSlider((isBackBtn ? "+" : "-"), 1000);
+   });
+});
+
+/*
+ * If the margin of the unordered list is set to 0, it means you are at the
+ * first image, and hence the Back button should be disabled. If the margin is
+ * set to -1200 pixels, you are at the last image.
+ * */
+
+//##############################################################################
+
+// Ajax with jQuery
+
+/*
+ * Unlike JavaScript, keys in JSON object have to have "double quotes" around
+ * them.
+ *
+ * Values in JSON can be of the following types:
+ * String
+ * Number
+ * Array
+ * Boolean true/false
+ * null
+ *
+ * Items in arrays can be any of these types, too.
+ * Strings need to be double quoted, but the rest don't
+ * */
+
+/*
+ * JSON.stringify(): Takes a JavaScript object and produces a JSON string from
+ * it.
+ * JSON.parse(): Takes a JSON string and parses it to a JavaScript object.
+ * */
+
+/*
+ * Web site (http://caniuse.com/json) is useful for finding out which browsers
+ * natively support JSON
+ * */
+
+$.ajax({
+    "url": "/myurl",
+    "type": "POST",     // Default is GET
+    "dataType": "json",
+    "success": function(data){
+        console.log(data);
+        ...
+    },
+    "error": function(jqxhr, msg, error){
+        ...
+    }
+});
+
+
+/*
+ * When jQuery 1.5 launched, it came with a new way of handling callbacks for
+ * Ajax requests that improved the syntax hugely.
+ * */
+/*
+ * The jqXHR object is a wrapper around the browser's native XMLHttpRequest
+ * object---the way Ajax requests are done with just JavaScript. Every jQuery
+ * Ajax method --- both the convenience one like $.getJSON and the main $.ajax
+ * method --- returns an instance of this object. What you can then do is add
+ * your callback methods onto this, meaning you don't have to define them within
+ * the call to the Ajax method.
+ * */
+
+$.ajax({
+    "url": "/someurl",
+    "success": function() {
+        // do something here
+    }
+});
+
+// VS.
+var req = $.ajax({
+    "url": "/someurl"
+});
+req.done(function(){
+    // do something
+});
+/*
+ * As of jQuery 1.8, using .error() and .success() are deprecated, meaning they
+ * shouldn't be used; instead, the following should be used:
+ * .done(), which replaces .success()
+ * .fail(), which replaces .error()
+ * .always(), which runs regardless of whether the request was successful or not
+ * */
+/*
+ * The real advantage of this is that you can set up multiple callbacks:
+ */
+
+var req = $.ajax({
+    "url": "/someUrl"
+});
+ 
+req.done(function() {
+    //do something
+});
+req.done(function() {
+    //do something else
+});
+ 
+req.always(function() {
+    //always do this
+});
+
+//##############################################################################
+
+/*
+ * By default, the browser won't allow one domain to make an Ajax call to a URL
+ * on another domain to pull in data, because this could be potentially
+ * dangerous.
+ * 
+ * Of course, this is not practical when it comes to using third-party APIs, and
+ * hence, many workarounds exist. One of the newer workarounds is Cross-Origin
+ * Resources Sharing(CORS), which allows the server to include a header in its
+ * response, stating that a cross-origin request is valid.
+ * https://developer.mozilla.org/en/docs/HTTP_access_control
+ * 
+ * Another solution, the one commonly used today, is to use JSONP, which stands
+ * for JSON Padded.
+ * http://johnnywey.wordpress.com/2012/05/20/jsonp-how-does-it-work/
+ *
+ * What if you could put the URL of the data you want into a script tag and get
+ * the server's response as a JavaScript script, thus allowing you to get at the
+ * data? This is how JSONP works.
+* */
+
+$(function() {
+    var req = $.ajax({
+        url: "http://api.dribbble.com/shots/626625",
+        dataType: "jsonp"       // 注意这里！
+    });
+    req.done(function(data) {
+        console.log(data);
+    });
+});
+
+//##############################################################################
+/*
+* 本书接下来的最后三个章节是讲述如何编写jQuery插件的，有时间可以再看看。
+* 本书挺不错。
+* */
